@@ -1,6 +1,6 @@
 
 from sdks.novavision.src.helper.package import PackageHelper
-from capsules.Package.src.models.PackageModel import PackageModel, PackageConfigs, ConfigExecutor, ClipOutputs, ClipResponse, ClipExecutor, OutputData
+from capsules.Clip.src.models.PackageModel import PackageModel, PackageConfigs, ConfigExecutor, ClipOutputs, ClipResponse, ClipExecutor, OutputData
 
 
 def build_response(context):
