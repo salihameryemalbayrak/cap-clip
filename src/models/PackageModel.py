@@ -96,7 +96,7 @@ class ClipConfigs(Configs):
     batchSize: BatchSize
 
 
-class PackageOutputs(Outputs):
+class ClipOutputs(Outputs):
     outputData: OutputData
 
 
@@ -111,7 +111,7 @@ class ClipRequest(Request):
 
 
 class ClipResponse(Response):
-    outputs: PackageOutputs
+    outputs: ClipOutputs
 
 
 class ClipExecutor(Config):
