@@ -86,11 +86,11 @@ class BatchSize(Config):
 
 
 
-class PackageInputs(Inputs):
+class ClipInputs(Inputs):
     inputImage: InputImage
 
 
-class PackageConfigs(Configs):
+class ClipConfigs(Configs):
     device:Device
     modelName: ModelName
     batchSize: BatchSize
@@ -100,8 +100,8 @@ class PackageOutputs(Outputs):
     outputData: OutputData
 
 
-class PackageRequest(Request):
-    inputs: Optional[PackageInputs]
+class ClipRequest(Request):
+    inputs: Optional[ClipInputs]
     configs: PackageConfigs
 
     class Config:
@@ -110,13 +110,13 @@ class PackageRequest(Request):
         }
 
 
-class PackageResponse(Response):
+class ClipResponse(Response):
     outputs: PackageOutputs
 
 
-class PackageExecutor(Config):
-    name: Literal["Package"] = "Package"
-    value: Union[PackageRequest, PackageResponse]
+class ClipExecutor(Config):
+    name: Literal["Clip"] = "Clip"
+    value: Union[ClipRequest, ClipResponse]
     type: Literal["object"] = "object"
     field: Literal["option"] = "option"
 
@@ -131,7 +131,7 @@ class PackageExecutor(Config):
 
 class ConfigExecutor(Config):
     name: Literal["ConfigExecutor"] = "ConfigExecutor"
-    value: Union[PackageExecutor]
+    value: Union[ClipExecutor]
     type: Literal["executor"] = "executor"
     field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
 
@@ -148,5 +148,5 @@ class PackageConfigs(Configs):
 
 class PackageModel(Package):
     configs: PackageConfigs
-    type: Literal["component"] = "component"
-    name: Literal["Package"] = "Package"
+    type: Literal["capsule"] = "capsule"
+    name: Literal["Clip"] = "Clip"
