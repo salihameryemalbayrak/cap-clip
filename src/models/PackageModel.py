@@ -1,7 +1,7 @@
 
 from pydantic import Field, validator
-from typing import List, Optional, Union, Literal
-from sdks.novavision.src.base.model import Package, Image, Inputs, Configs, Outputs, Response, Request, Output, Input, Config
+from typing import List, Optional, Union, Literal, Dict
+from sdks.novavision.src.base.model import Package, Image, Inputs, Configs, Outputs, Response, Request, Output, Input, Config, Detection
 
 
 class InputImage(Input):
@@ -21,68 +21,69 @@ class InputImage(Input):
         title = "Image"
 
 
-class OutputImage(Output):
-    name: Literal["outputImage"] = "outputImage"
-    value: Union[List[Image],Image]
+class OutputData(Output):
+    name: Literal["outputData"] = "outputData"
+    value: Union[List[Image], Image, List[Detection], Detection, Dict, List]
     type: str = "object"
 
-    @validator("type", pre=True, always=True)
-    def set_type_based_on_value(cls, value, values):
-        value = values.get('value')
-        if isinstance(value, Image):
-            return "object"
-        elif isinstance(value, list):
-            return "list"
-
     class Config:
-        title = "Image"
+        title = "Output Data"
 
-
-class KeepSideFalse(Config):
-    name: Literal["False"] = "False"
-    value: Literal[False] = False
-    type: Literal["bool"] = "bool"
+class DeviceCpu(Config):
+    name: Literal["cpu"] = "cpu"
+    value: Literal["cpu"] = "cpu"
+    type: Literal["string"] = "string"
     field: Literal["option"] = "option"
 
     class Config:
-        title = "Disable"
+        title = "CPU"
 
-
-class KeepSideTrue(Config):
-    name: Literal["True"] = "True"
-    value: Literal[True] = True
-    type: Literal["bool"] = "bool"
+class DeviceGpu(Config):
+    name: Literal["cuda"] = "cuda"
+    value: Literal["cuda"] = "cuda"
+    type: Literal["string"] = "string"
     field: Literal["option"] = "option"
 
     class Config:
-        title = "Enable"
+        title = "GPU"
 
 
-class KeepSideBBox(Config):
+class Device(Config):
     """
-        Rotate image without catting off sides.
+            ...
     """
-    name: Literal["KeepSide"] = "KeepSide"
-    value: Union[KeepSideTrue, KeepSideFalse]
+    name: Literal["device"] = "device"
+    value: Union[DeviceGpu, DeviceCpu]
     type: Literal["object"] = "object"
-    field: Literal["dropdownlist"] = "dropdownlist"
+    field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
 
     class Config:
-        title = "Keep Sides"
+        title = "Device"
 
-
-class Degree(Config):
+class ModelName(Config):
     """
-        Positive angles specify counterclockwise rotation while negative angles indicate clockwise rotation.
+    ...
     """
-    name: Literal["Degree"] = "Degree"
-    value: int = Field(ge=-359.0, le=359.0,default=0)
-    type: Literal["number"] = "number"
+    name: Literal["modelName"] = "modelName"
+    value: str = Field(default="openai/clip-vit-base-patch32")
+    type: Literal["string"] = "string"
     field: Literal["textInput"] = "textInput"
-    placeHolder: Literal["[-359, 359]"] = "[-359, 359]"
 
     class Config:
-        title = "Angle"
+        title = "Model Name"
+
+class BatchSize(Config):
+    """
+    ...
+    """
+    name: Literal["batchSize"] = "batchSize"
+    value: str = Field(default=32)
+    type: Literal["string"] = "string"
+    field: Literal["textInput"] = "textInput"
+
+    class Config:
+        title = "Batch Size"
+
 
 
 class PackageInputs(Inputs):
@@ -90,12 +91,13 @@ class PackageInputs(Inputs):
 
 
 class PackageConfigs(Configs):
-    degree: Degree
-    drawBBox: KeepSideBBox
+    device:Device
+    modelName: ModelName
+    batchSize: BatchSize
 
 
 class PackageOutputs(Outputs):
-    outputImage: OutputImage
+    outputData: OutputData
 
 
 class PackageRequest(Request):
