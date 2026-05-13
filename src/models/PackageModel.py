@@ -102,7 +102,7 @@ class PackageOutputs(Outputs):
 
 class ClipRequest(Request):
     inputs: Optional[ClipInputs]
-    configs: PackageConfigs
+    configs: ClipConfigs
 
     class Config:
         json_schema_extra = {
