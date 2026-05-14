@@ -3,7 +3,6 @@
 """
 
 import os
-import cv2
 import sys
 import numpy as np
 import torch
@@ -11,7 +10,6 @@ from transformers import CLIPModel, CLIPProcessor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
 
-from sdks.novavision.src.media.image import Image
 from sdks.novavision.src.base.capsule import Capsule
 from sdks.novavision.src.helper.executor import Executor
 from capsules.Clip.src.utils.response import build_response_string
@@ -23,7 +21,7 @@ class ClipString(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))
-        self.inputData = self.request.get_param("inputData")   # string veya string listesi
+        self.inputData = self.request.get_param("inputData")
         self.batchSize = self.request.get_param("batchSize")
 
         self.clip_model = bootstrap["clip_model"]
@@ -36,7 +34,6 @@ class ClipString(Capsule):
     @staticmethod
     def bootstrap(config: dict) -> dict:
         application = Application()
-
         model_name = application.get_param(config=config, name="modelName")
         device     = application.get_param(config=config, name="device")
 
@@ -51,21 +48,32 @@ class ClipString(Capsule):
             "device":     device,
         }
 
+    def _extract_text(self, data):
+        """Farklı JSON formatlarından ham metni ayıklar."""
+        if isinstance(data, dict):
+            val = data.get("value", "")
+            if isinstance(val, dict):
+                return str(next(iter(val.values())))
+            return val
+        return data
+
     def run(self):
         print("run string")
 
-        # String veya liste olabilir, normalize et
-        if isinstance(self.inputData, str):
-            texts = [self.inputData]
-        elif isinstance(self.inputData, list):
-            texts = self.inputData
+        # Girdi verisini temizle
+        raw_input = self._extract_text(self.inputData)
+
+        # İşleme listesi oluştur
+        if isinstance(raw_input, list):
+            texts_to_process = [str(t) for t in raw_input]
+        else:
+            texts_to_process = [str(raw_input)]
 
         batch_size = int(self.batchSize) if self.batchSize else 32
-
         all_embeddings = []
 
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
+        for i in range(0, len(texts_to_process), batch_size):
+            batch = texts_to_process[i:i + batch_size]
 
             inputs = self.processor(
                 text=batch,
@@ -76,27 +84,33 @@ class ClipString(Capsule):
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
             with torch.no_grad():
-                embs = self.clip_model.get_text_features(**inputs)
+                outputs = self.clip_model.get_text_features(**inputs)
 
+                # 'BaseModelOutputWithPooling' hatasını önlemek için kontrol
+                if isinstance(outputs, torch.Tensor):
+                    embs = outputs
+                else:
+                    # pooling_output veya ilk indeksi al
+                    embs = getattr(outputs, "text_embeds", outputs[0])
+
+            # İstediğin üzerine normalizasyon (embs / embs.norm) kaldırıldı
             all_embeddings.extend(embs.cpu().numpy().tolist())
 
-        # Tek string geldiyse tek embedding döndür
-        # Liste geldiyse liste döndür
-        if isinstance(self.inputData, str):
-            self.outputData = {
-                "text":      self.inputData,
-                "embedding": all_embeddings[0]
+        # ClipImage yapısında olduğu gibi listeleme yapıyoruz
+        self.outputData = [
+            {
+                "value":     texts_to_process[j],
+                "embedding": all_embeddings[j]
             }
-        else:
-            self.outputData = [
-                {
-                    "text":      texts[i],
-                    "embedding": all_embeddings[i]
-                }
-                for i in range(len(texts))
-            ]
+            for j in range(len(texts_to_process))
+        ]
 
-        self.data = self.outputData
+        # Eğer tek bir string geldiyse liste yerine direkt objeyi döndürmek istersen:
+        if not isinstance(raw_input, list):
+            self.data = self.outputData[0]
+        else:
+            self.data = self.outputData
+
         return build_response_string(context=self)
 
 

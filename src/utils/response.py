@@ -16,7 +16,7 @@ def build_response_image(context):
 
 def build_response_string(context):
     outputData = OutputData(value=context.outputData)
-    clipStringOutputs = ClipImageOutputs(outputData=outputData)
+    clipStringOutputs = ClipStringOutputs(outputData=outputData)
     clipStringResponse = ClipStringResponse(outputs=clipStringOutputs)
     clipStringExecutor = ClipStringExecutor(value=clipStringResponse)
     executor = ConfigExecutor(value=clipStringExecutor)
