@@ -15,7 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
 from sdks.novavision.src.media.image import Image
 from sdks.novavision.src.base.capsule import Capsule
 from sdks.novavision.src.helper.executor import Executor
-from capsules.Clip.src.utils.response import build_response
+from capsules.Clip.src.utils.response import build_response_image
 from capsules.Clip.src.models.PackageModel import PackageModel
 from sdks.novavision.src.base.application import Application
 
@@ -54,10 +54,6 @@ class ClipImage(Capsule):
 
     def run(self):
         print("run")
-
-        if not self.images:
-            self.data = []
-            return build_response(context=self)
 
         batch_size = int(self.batchSize) if self.batchSize else 32
 
@@ -100,7 +96,7 @@ class ClipImage(Capsule):
         ]
 
         self.data = self.outputData
-        return build_response(context=self)
+        return build_response_image(context=self)
 
 
 if "__main__" == __name__:
