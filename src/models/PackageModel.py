@@ -20,6 +20,14 @@ class InputImage(Input):
     class Config:
         title = "Image"
 
+class InputData(Input):
+    name: Literal["inputData"] = "inputData"
+    value: Union[List[Image], Image, List[Detection], Detection, Dict, List]
+    type: str = "object"
+
+    class Config:
+        title = "ınput Data"
+
 
 class OutputData(Output):
     name: Literal["outputData"] = "outputData"
@@ -130,7 +138,7 @@ class ClipImageExecutor(Config):
 
 
 class ClipStringInputs(Inputs):
-    inputImage: InputImage
+    inputData: InputData
 
 
 class ClipStringConfigs(Configs):
