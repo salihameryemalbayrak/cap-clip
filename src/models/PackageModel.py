@@ -177,6 +177,7 @@ class ConfigExecutor(Config):
     value: Union[ClipImageExecutor, ClipStringExecutor]
     type: Literal["executor"] = "executor"
     field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
+    restart: Literal[True] = True
 
     class Config:
         title = "Type"
