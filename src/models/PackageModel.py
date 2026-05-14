@@ -129,7 +129,7 @@ class ClipImageExecutor(Config):
     field: Literal["option"] = "option"
 
     class Config:
-        title = "Package"
+        title = "Image"
         json_schema_extra = {
             "target": {
                 "value": 0
@@ -172,7 +172,7 @@ class ClipStringExecutor(Config):
     field: Literal["option"] = "option"
 
     class Config:
-        title = "Package"
+        title = "String"
         json_schema_extra = {
             "target": {
                 "value": 0

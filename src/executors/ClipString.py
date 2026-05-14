@@ -32,7 +32,7 @@ class ClipString(Capsule):
         self.device     = bootstrap["device"]
 
         self.outputData = []
-        print("init")
+        print("init string")
 
     @staticmethod
     def bootstrap(config: dict) -> dict:
@@ -45,7 +45,7 @@ class ClipString(Capsule):
         processor  = CLIPProcessor.from_pretrained(model_name)
         clip_model = clip_model.to(device).eval()
 
-        print("bootstrap")
+        print("bootstrap string")
         return {
             "clip_model": clip_model,
             "processor":  processor,
@@ -53,7 +53,7 @@ class ClipString(Capsule):
         }
 
     def run(self):
-        print("run")
+        print("run string")
 
         if not self.images:
             self.data = []
