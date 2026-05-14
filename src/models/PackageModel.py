@@ -22,7 +22,7 @@ class InputImage(Input):
 
 class InputData(Input):
     name: Literal["inputData"] = "inputData"
-    value: Union[List[Image], Image, List[Detection], Detection, Dict, List]
+    value: Union[List[Image], Image, List[Detection], Detection, Dict, List, str]
     type: str = "object"
 
     class Config:

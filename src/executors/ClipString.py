@@ -21,6 +21,7 @@ class ClipString(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))
+        # inputData: string veya list[string] bekliyoruz
         self.inputData = self.request.get_param("inputData")
         self.batchSize = self.request.get_param("batchSize")
 
@@ -48,32 +49,33 @@ class ClipString(Capsule):
             "device":     device,
         }
 
-    def _extract_text(self, data):
-        """Farklı JSON formatlarından ham metni ayıklar."""
-        if isinstance(data, dict):
-            val = data.get("value", "")
-            if isinstance(val, dict):
-                return str(next(iter(val.values())))
-            return val
-        return data
-
     def run(self):
         print("run string")
 
-        # Girdi verisini temizle
-        raw_input = self._extract_text(self.inputData)
+        # ── SADECE STRING VE LIST KONTROLÜ ──
+        # dict (sözlük) gelirse işlem yapma
+        if isinstance(self.inputData, dict):
+            print("Dict input ignored as requested.")
+            return build_response_string(context=self)
 
-        # İşleme listesi oluştur
-        if isinstance(raw_input, list):
-            texts_to_process = [str(t) for t in raw_input]
+        if isinstance(self.inputData, list):
+            texts_to_process = [str(t) for t in self.inputData]
+            is_list = True
+        elif isinstance(self.inputData, str):
+            texts_to_process = [self.inputData]
+            is_list = False
         else:
-            texts_to_process = [str(raw_input)]
+            # Diğer tipleri (int, None vb.) ignore et
+            return build_response_string(context=self)
 
         batch_size = int(self.batchSize) if self.batchSize else 32
         all_embeddings = []
 
         for i in range(0, len(texts_to_process), batch_size):
             batch = texts_to_process[i:i + batch_size]
+
+            # Modelin çökmemesi için boş metinleri boşlukla değiştir
+            batch = [t if (t and t.strip()) else " " for t in batch]
 
             inputs = self.processor(
                 text=batch,
@@ -86,18 +88,17 @@ class ClipString(Capsule):
             with torch.no_grad():
                 outputs = self.clip_model.get_text_features(**inputs)
 
-                # 'BaseModelOutputWithPooling' hatasını önlemek için kontrol
+                # Tensor tipini doğrula (BaseModelOutput hatasını önler)
                 if isinstance(outputs, torch.Tensor):
                     embs = outputs
                 else:
-                    # pooling_output veya ilk indeksi al
                     embs = getattr(outputs, "text_embeds", outputs[0])
 
-            # İstediğin üzerine normalizasyon (embs / embs.norm) kaldırıldı
+            # Ham embeddingleri listeye ekle (Normalizasyon yok)
             all_embeddings.extend(embs.cpu().numpy().tolist())
 
-        # ClipImage yapısında olduğu gibi listeleme yapıyoruz
-        self.outputData = [
+        # ── ÇIKTI FORMATLAMA ──
+        formatted_results = [
             {
                 "value":     texts_to_process[j],
                 "embedding": all_embeddings[j]
@@ -105,11 +106,11 @@ class ClipString(Capsule):
             for j in range(len(texts_to_process))
         ]
 
-        # Eğer tek bir string geldiyse liste yerine direkt objeyi döndürmek istersen:
-        if not isinstance(raw_input, list):
-            self.data = self.outputData[0]
+        # Liste geldiyse liste, string geldiyse tek obje dön
+        if is_list:
+            self.outputData = formatted_results
         else:
-            self.data = self.outputData
+            self.outputData = formatted_results[0]
 
         return build_response_string(context=self)
 
