@@ -20,7 +20,7 @@ from capsules.Clip.src.models.PackageModel import PackageModel
 from sdks.novavision.src.base.application import Application
 
 
-class Clip(Capsule):
+class ClipImage(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))

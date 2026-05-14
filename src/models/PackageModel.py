@@ -86,11 +86,11 @@ class BatchSize(Config):
 
 
 
-class ClipInputs(Inputs):
+class ClipImageInputs(Inputs):
     inputImage: InputImage
 
 
-class ClipConfigs(Configs):
+class ClipImageConfigs(Configs):
     device:Device
     modelName: ModelName
     batchSize: BatchSize
@@ -100,9 +100,9 @@ class ClipOutputs(Outputs):
     outputData: OutputData
 
 
-class ClipRequest(Request):
-    inputs: Optional[ClipInputs]
-    configs: ClipConfigs
+class ClipImageRequest(Request):
+    inputs: Optional[ClipImageInputs]
+    configs: ClipImageConfigs
 
     class Config:
         json_schema_extra = {
@@ -110,13 +110,13 @@ class ClipRequest(Request):
         }
 
 
-class ClipResponse(Response):
+class ClipImageResponse(Response):
     outputs: ClipOutputs
 
 
-class ClipExecutor(Config):
-    name: Literal["Clip"] = "Clip"
-    value: Union[ClipRequest, ClipResponse]
+class ClipImageExecutor(Config):
+    name: Literal["ClipImage"] = "ClipImage"
+    value: Union[ClipImageRequest, ClipImageResponse]
     type: Literal["object"] = "object"
     field: Literal["option"] = "option"
 
@@ -131,14 +131,14 @@ class ClipExecutor(Config):
 
 class ConfigExecutor(Config):
     name: Literal["ConfigExecutor"] = "ConfigExecutor"
-    value: Union[ClipExecutor]
+    value: Union[ClipImageExecutor]
     type: Literal["executor"] = "executor"
     field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
 
     class Config:
-        title = "Task"
+        title = "Type"
         json_schema_extra = {
-            "target": "value"
+            "shortDescription": "Mode"
         }
 
 
