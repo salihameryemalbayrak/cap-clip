@@ -3,6 +3,7 @@
 """
 
 import os
+import cv2
 import sys
 import numpy as np
 import torch
@@ -10,6 +11,7 @@ from transformers import CLIPModel, CLIPProcessor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
 
+from sdks.novavision.src.media.image import Image
 from sdks.novavision.src.base.capsule import Capsule
 from sdks.novavision.src.helper.executor import Executor
 from capsules.Clip.src.utils.response import build_response_string
@@ -21,8 +23,7 @@ class ClipString(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))
-        # inputData: string veya list[string] bekliyoruz
-        self.inputData = self.request.get_param("inputData")
+        self.inputData = self.request.get_param("inputData")   # string veya string listesi
         self.batchSize = self.request.get_param("batchSize")
 
         self.clip_model = bootstrap["clip_model"]
@@ -35,6 +36,7 @@ class ClipString(Capsule):
     @staticmethod
     def bootstrap(config: dict) -> dict:
         application = Application()
+
         model_name = application.get_param(config=config, name="modelName")
         device     = application.get_param(config=config, name="device")
 
@@ -52,30 +54,21 @@ class ClipString(Capsule):
     def run(self):
         print("run string")
 
-        # ── SADECE STRING VE LIST KONTROLÜ ──
-        # dict (sözlük) gelirse işlem yapma
-        if isinstance(self.inputData, dict):
-            print("Dict input ignored as requested.")
-            return build_response_string(context=self)
-
-        if isinstance(self.inputData, list):
-            texts_to_process = [str(t) for t in self.inputData]
-            is_list = True
-        elif isinstance(self.inputData, str):
-            texts_to_process = [self.inputData]
-            is_list = False
+        # String veya liste olabilir, normalize et
+        if isinstance(self.inputData, str):
+            texts = [self.inputData]
+        elif isinstance(self.inputData, list):
+            texts = self.inputData
         else:
-            # Diğer tipleri (int, None vb.) ignore et
+            self.data = []
             return build_response_string(context=self)
 
         batch_size = int(self.batchSize) if self.batchSize else 32
+
         all_embeddings = []
 
-        for i in range(0, len(texts_to_process), batch_size):
-            batch = texts_to_process[i:i + batch_size]
-
-            # Modelin çökmemesi için boş metinleri boşlukla değiştir
-            batch = [t if (t and t.strip()) else " " for t in batch]
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
 
             inputs = self.processor(
                 text=batch,
@@ -87,31 +80,26 @@ class ClipString(Capsule):
 
             with torch.no_grad():
                 outputs = self.clip_model.get_text_features(**inputs)
+                embs = outputs if isinstance(outputs, torch.Tensor) else outputs.pooler_output
 
-                # Tensor tipini doğrula (BaseModelOutput hatasını önler)
-                if isinstance(outputs, torch.Tensor):
-                    embs = outputs
-                else:
-                    embs = getattr(outputs, "text_embeds", outputs[0])
-
-            # Ham embeddingleri listeye ekle (Normalizasyon yok)
             all_embeddings.extend(embs.cpu().numpy().tolist())
-
-        # ── ÇIKTI FORMATLAMA ──
-        formatted_results = [
-            {
-                "value":     texts_to_process[j],
-                "embedding": all_embeddings[j]
+        # Tek string geldiyse tek embedding döndür
+        # Liste geldiyse liste döndür
+        if isinstance(self.inputData, str):
+            self.outputData = {
+                "text":      self.inputData,
+                "embedding": all_embeddings[0]
             }
-            for j in range(len(texts_to_process))
-        ]
-
-        # Liste geldiyse liste, string geldiyse tek obje dön
-        if is_list:
-            self.outputData = formatted_results
         else:
-            self.outputData = formatted_results[0]
+            self.outputData = [
+                {
+                    "text":      texts[i],
+                    "embedding": all_embeddings[i]
+                }
+                for i in range(len(texts))
+            ]
 
+        self.data = self.outputData
         return build_response_string(context=self)
 
 
