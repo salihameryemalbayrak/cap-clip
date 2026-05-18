@@ -1,14 +1,12 @@
 """
-    CLIP embedding extractor capsule
+    CLIP image embedding extractor capsule
 """
 
 import os
-import cv2
 import sys
 import numpy as np
 from PIL import Image as PILImage
 import torch
-from transformers import CLIPModel, CLIPProcessor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
 
@@ -16,15 +14,15 @@ from sdks.novavision.src.media.image import Image
 from sdks.novavision.src.base.capsule import Capsule
 from sdks.novavision.src.helper.executor import Executor
 from capsules.Clip.src.utils.response import build_response_image
+from capsules.Clip.src.utils.utils import ModelLoader
 from capsules.Clip.src.models.PackageModel import PackageModel
-from sdks.novavision.src.base.application import Application
 
 
 class ClipImage(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))
-        self.images    = self.request.get_param("inputImage")   # liste geliyor
+        self.images    = self.request.get_param("inputImage")
         self.batchSize = self.request.get_param("batchSize")
 
         self.clip_model = bootstrap["clip_model"]
@@ -32,32 +30,21 @@ class ClipImage(Capsule):
         self.device     = bootstrap["device"]
 
         self.outputData = []
-        print("init")
+        print("init image")
 
     @staticmethod
     def bootstrap(config: dict) -> dict:
-        application = Application()
-
-        model_name = application.get_param(config=config, name="modelName")
-        device = application.get_param(config=config, name="device")
-
-        clip_model = CLIPModel.from_pretrained(model_name)
-        processor  = CLIPProcessor.from_pretrained(model_name)
-        clip_model = clip_model.to(device).eval()
-
-        print("bootstrap")
-        return {
-            "clip_model": clip_model,
-            "processor":  processor,
-            "device":     device,
-        }
+        return ModelLoader(config=config).load_model()
 
     def run(self):
-        print("run")
+        print("run image")
+
+        if not self.images:
+            self.data = []
+            return build_response_image(context=self)
 
         batch_size = int(self.batchSize) if self.batchSize else 32
 
-        # ── Tüm görüntüleri oku, uID'leri sakla ──
         pil_images = []
         uids       = []
 
@@ -73,7 +60,6 @@ class ClipImage(Capsule):
 
             uids.append(uid)
 
-        # ── Batch'lere böl, embedding hesapla ──
         all_embeddings = []
         for i in range(0, len(pil_images), batch_size):
             batch  = pil_images[i:i + batch_size]
@@ -84,14 +70,10 @@ class ClipImage(Capsule):
                 outputs = self.clip_model.get_image_features(**inputs)
                 embs    = outputs if isinstance(outputs, torch.Tensor) else outputs.pooler_output
 
-            all_embeddings.extend(embs.cpu().numpy().tolist())
+            all_embeddings.extend(embs.detach().clone().cpu().numpy().tolist())
 
-        # ── uID + embedding eşleştir ──
         self.outputData = [
-            {
-                "uID":       uids[i],
-                "embedding": all_embeddings[i]
-            }
+            {"uID": uids[i], "embedding": all_embeddings[i]}
             for i in range(len(uids))
         ]
 

@@ -3,27 +3,23 @@
 """
 
 import os
-import cv2
 import sys
-import numpy as np
 import torch
-from transformers import CLIPModel, CLIPProcessor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
 
-from sdks.novavision.src.media.image import Image
 from sdks.novavision.src.base.capsule import Capsule
 from sdks.novavision.src.helper.executor import Executor
 from capsules.Clip.src.utils.response import build_response_string
+from capsules.Clip.src.utils.utils import ModelLoader
 from capsules.Clip.src.models.PackageModel import PackageModel
-from sdks.novavision.src.base.application import Application
 
 
 class ClipString(Capsule):
     def __init__(self, request, bootstrap):
         super().__init__(request, bootstrap)
         self.request.model = PackageModel(**(self.request.data))
-        self.inputData = self.request.get_param("inputData")   # string veya string listesi
+        self.inputData = self.request.get_param("inputData")
         self.batchSize = self.request.get_param("batchSize")
 
         self.clip_model = bootstrap["clip_model"]
@@ -35,26 +31,11 @@ class ClipString(Capsule):
 
     @staticmethod
     def bootstrap(config: dict) -> dict:
-        application = Application()
-
-        model_name = application.get_param(config=config, name="modelName")
-        device     = application.get_param(config=config, name="device")
-
-        clip_model = CLIPModel.from_pretrained(model_name)
-        processor  = CLIPProcessor.from_pretrained(model_name)
-        clip_model = clip_model.to(device).eval()
-
-        print("bootstrap string")
-        return {
-            "clip_model": clip_model,
-            "processor":  processor,
-            "device":     device,
-        }
+        return ModelLoader(config=config).load_model()
 
     def run(self):
         print("run string")
 
-        # String veya liste olabilir, normalize et
         if isinstance(self.inputData, str):
             texts = [self.inputData]
         elif isinstance(self.inputData, list):
@@ -66,10 +47,8 @@ class ClipString(Capsule):
         batch_size = int(self.batchSize) if self.batchSize else 32
 
         all_embeddings = []
-
         for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-
+            batch  = texts[i:i + batch_size]
             inputs = self.processor(
                 text=batch,
                 return_tensors="pt",
@@ -80,11 +59,10 @@ class ClipString(Capsule):
 
             with torch.no_grad():
                 outputs = self.clip_model.get_text_features(**inputs)
-                embs = outputs if isinstance(outputs, torch.Tensor) else outputs.pooler_output
+                embs    = outputs if isinstance(outputs, torch.Tensor) else outputs.pooler_output
 
-            all_embeddings.extend(embs.cpu().numpy().tolist())
-        # Tek string geldiyse tek embedding döndür
-        # Liste geldiyse liste döndür
+            all_embeddings.extend(embs.detach().clone().cpu().numpy().tolist())
+
         if isinstance(self.inputData, str):
             self.outputData = {
                 "text":      self.inputData,
@@ -92,10 +70,7 @@ class ClipString(Capsule):
             }
         else:
             self.outputData = [
-                {
-                    "text":      texts[i],
-                    "embedding": all_embeddings[i]
-                }
+                {"text": texts[i], "embedding": all_embeddings[i]}
                 for i in range(len(texts))
             ]
 
