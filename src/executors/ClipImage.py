@@ -39,9 +39,8 @@ class ClipImage(Capsule):
     def run(self):
         print("run image")
 
-        if not self.images:
-            self.data = []
-            return build_response_image(context=self)
+        if isinstance(self.images, dict):
+            self.images = [self.images]
 
         batch_size = int(self.batchSize) if self.batchSize else 32
 
