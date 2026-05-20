@@ -1,4 +1,3 @@
-
 from pydantic import Field, validator
 from typing import List, Optional, Union, Literal, Dict
 from sdks.novavision.src.base.model import Package, Image, Inputs, Configs, Outputs, Response, Request, Output, Input, Config, Detection
@@ -58,7 +57,8 @@ class DeviceGpu(Config):
 
 class Device(Config):
     """
-            ...
+    Specifies the hardware used for model inference, allowing selection between CPU and GPU (CUDA).
+    A GPU is recommended for faster processing, while the CPU acts as a highly compatible fallback.
     """
     name: Literal["device"] = "device"
     value: Union[DeviceGpu, DeviceCpu]
@@ -70,7 +70,8 @@ class Device(Config):
 
 class ModelName(Config):
     """
-    ...
+    Defines the specific pre-trained CLIP model architecture to load, defaulting to 'openai/clip-vit-base-patch32'.
+    Users can provide other valid Hugging Face model identifiers depending on their accuracy and performance requirements.
     """
     name: Literal["modelName"] = "modelName"
     value: str = Field(default="openai/clip-vit-base-patch32")
@@ -82,7 +83,8 @@ class ModelName(Config):
 
 class BatchSize(Config):
     """
-    ...
+    Determines the number of samples processed simultaneously in a single forward pass.
+    Higher values increase throughput but require more VRAM, so adjust this down if you encounter Out-Of-Memory errors.
     """
     name: Literal["batchSize"] = "batchSize"
     value: str = Field(default=32)
@@ -91,7 +93,6 @@ class BatchSize(Config):
 
     class Config:
         title = "Batch Size"
-
 
 
 class ClipImageInputs(Inputs):
